@@ -1,0 +1,97 @@
+<!-- 
+  - Copytight (c) 2024 Zhiyuan Bai <Bzy080408@outlook.com>  
+  - Powered by Cesium
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>[WIP] 洛阳外国语学校云上3D观校</title>
+  <script src="Build/Cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="Build/Cesium/Widgets/widgets.css" />
+  <style type="text/css">
+    html,
+    body,
+    #tiandituContainer {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body onload="loadData()">
+  <div id="tiandituContainer">
+  </div>
+  <script>
+    alert("警告：请勿使用老旧手机或电脑，否则会很卡或崩溃。\n 版权声明： \n * Copyright 2011-2024 Cesium Contributors\n* Copyright 2023-2024 Zhiyuan Bai<Bzy080408@outlook.com>");
+
+    var viewer;
+    
+    function loadData() {
+      viewer = new Cesium.Viewer('tiandituContainer', {
+        animation: false,       //是否显示动画控件
+        homeButton: false,       //是否显示home键
+        geocoder: false,         //是否显示地名查找控件，如果设置为true，则无法查询
+        baseLayerPicker: false, //是否显示图层选择控件
+        timeline: false,        //是否显示时间线控件
+        fullscreenButton: true, //是否全屏显示
+        infoBox: true,         //是否显示点击要素之后显示的信息
+        sceneModePicker: false,  //是否显示投影方式控件  三维/二维
+        navigationInstructionsInitiallyVisible: false, //导航指令
+        navigationHelpButton: false,     //是否显示帮助信息控件
+        selectionIndicator: false, //是否显示指示器组件
+      });
+      viewer.scene.globe.depthTestAgainstTerrain = true;//地形遮挡效果开关，打开后地形会遮挡看不到的区域
+      viewer.scene.globe.enableLighting = false; //对大气和雾启用动态照明效果
+      add3DTiles("chun/chun.json", 112.544095441842, 34.693922711221, 224);
+    }
+
+    function add3DTiles(url, longitude, latitude, height) {
+      var tileset = viewer.scene.primitives.add(
+        new Cesium.Cesium3DTileset({
+          url: url,
+          maximumScreenSpaceError: 256,//默认16,最大屏幕空间错误
+          maximumNumberOfLoadedTiles: 4,
+          maximumMemoryUsage: 128//默认512,内存MB的最大数量
+        }));
+      tileset.readyPromise.then((tileset) => {
+
+        //高度修改
+        tileSet(tileset, longitude, latitude, height)
+        viewer.zoomTo(tileset);
+      });
+    }
+    
+    function tileSet(tileset, longitude, latitude, height) {
+      var boundingSphere = tileset.boundingSphere;
+      var cartographic_original = Cesium.Cartographic.fromCartesian(boundingSphere.center);
+      var cartographic_offset = Cesium.Cartographic.fromDegrees(longitude, latitude, height)
+      var Cartesian3_original = Cesium.Cartesian3.fromRadians(cartographic_original.longitude, cartographic_original.latitude, cartographic_original.height);
+      var Cartesian3_offset = Cesium.Cartesian3.fromRadians(cartographic_offset.longitude, cartographic_offset.latitude, cartographic_offset.height);
+      var translation = Cesium.Cartesian3.subtract(Cartesian3_offset, Cartesian3_original, new Cesium.Cartesian3());
+      tileset.modelMatrix = Cesium.Matrix4.fromTranslation(translation);
+    }
+
+    function tileSetAll(tileset, longitude, latitude, height, rotateX, rotateY, rotateZ, scale) {
+      var mx = Cesium.Matrix3.fromRotationX(Cesium.Math.toRadians(rotateX));
+      var my = Cesium.Matrix3.fromRotationY(Cesium.Math.toRadians(rotateY));
+      var mz = Cesium.Matrix3.fromRotationZ(Cesium.Math.toRadians(rotateZ));
+      var rotationX = Cesium.Matrix4.fromRotationTranslation(mx);
+      var rotationY = Cesium.Matrix4.fromRotationTranslation(my);
+      var rotationZ = Cesium.Matrix4.fromRotationTranslation(mz);
+      var position = Cesium.Cartesian3.fromDegrees(longitude, latitude, height);
+      var transform = Cesium.Transforms.eastNorthUpToFixedFrame(position);
+      Cesium.Matrix4.multiply(transform, rotationX, transform);
+      Cesium.Matrix4.multiply(transform, rotationY, transform);
+      Cesium.Matrix4.multiply(transform, rotationZ, transform);
+      var scale1 = Cesium.Matrix4.fromUniformScale(scale);
+      Cesium.Matrix4.multiply(transform, scale1, transform);
+      tileset._root.transform = transform;
+
+    }
+  </script>
+</body>
+</html>
